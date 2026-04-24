@@ -1,0 +1,89 @@
+/* src/app/globals.css */
+@import "tailwindcss";
+
+:root {
+  --bg-main: #ffffff;
+  --bg-surface: #ffffff;
+  --border-muted: #d1d5db;
+  --text-primary: #1e3a8a; /* Deep Blue for text */
+  --text-secondary: #3b82f6; /* Lighter Blue for secondary text */
+  --accent-blue: #1d4ed8; /* Strong Banking Blue */
+}
+
+body {
+  background-color: #f3f4f6; /* Very light gray background to make white cards pop */
+  color: var(--text-primary);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+}
+
+.basic-card {
+  background: white;
+  border: 1px solid var(--border-muted);
+  border-radius: 4px; /* Sharper corners for a professional banking look */
+  padding: 32px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.banking-header {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  border-bottom: 3px solid var(--accent-blue); /* Solid blue accent line */
+  background: white;
+}
+
+.report-viewport {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #f3f4f6;
+  min-height: calc(100vh - 60px);
+}
+
+.report-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: white;
+  border: 1px solid var(--border-muted);
+  border-radius: 4px;
+}
+
+.report-frame-container {
+  flex: 1;
+  border: 1px solid var(--border-muted);
+  background: white;
+  min-height: 85vh;
+}
+
+iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.btn-basic {
+  background: var(--accent-blue);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 4px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: background 0.2s;
+}
+
+.btn-basic:hover {
+  background: #1e40af;
+}
+
+.btn-basic:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+}
