@@ -12,19 +12,35 @@ import redis from "@/lib/redis";
  *   { reportID: string, userID: string }
  *
  * Response body (200):
- *   { success: true, token: string, reportID: string, userID: string }
+ *   {
+ *     success:     true,
+ *     token:       string,   ← GUID token
+ *     reportID:    string,
+ *     userID:      string,
+ *     redirectUrl: string    ← ready-to-use browser GET URL
+ *   }
  *
  * Side-effect:
- *   Stores the token in Redis under the key: APP_ID-userID-reportID  (TTL: 1 h)
+ *   Stores the token in Redis under the key: APP_ID-token  (TTL: 1 h)
  */
 export async function POST(req: NextRequest) {
+
+  // Helper: builds the browser-facing error page URL
+  // Backend can redirect the user's browser directly to this URL.
+  function buildErrorUrl(code: string, message: string): string {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    return `${appUrl}/error-access?code=${encodeURIComponent(code)}&reason=${encodeURIComponent(message)}`;
+  }
+
   try {
     // 1. Validate Basic Authorization header
     const authHeader = req.headers.get("authorization");
 
     if (!authHeader || !authHeader.startsWith("Basic ")) {
+      const code = "MISSING_AUTH_HEADER";
+      const msg  = "Authorization header is missing or not using Basic Auth.";
       return NextResponse.json(
-        { error: "Unauthorized. Basic authentication required." },
+        { errorCode: code, message: msg, errorUrl: buildErrorUrl(code, msg) },
         {
           status: 401,
           headers: { "WWW-Authenticate": 'Basic realm="Secure Report API"' }
@@ -40,9 +56,11 @@ export async function POST(req: NextRequest) {
     const VALID_USERNAME = process.env.AUTH_USERNAME || "admin";
     const VALID_PASSWORD = process.env.AUTH_PASSWORD || "password123";
 
-    if (username !== VALID_USERNAME || password !== VALID_PASSWORD) { //validate
+    if (username !== VALID_USERNAME || password !== VALID_PASSWORD) {
+      const code = "INVALID_CREDENTIALS";
+      const msg  = "The username or password you provided is incorrect.";
       return NextResponse.json(
-        { error: "Invalid username or password." },
+        { errorCode: code, message: msg, errorUrl: buildErrorUrl(code, msg) },
         { status: 401 }
       );
     }
@@ -52,15 +70,19 @@ export async function POST(req: NextRequest) {
     const { reportID, userID } = body;
 
     if (!reportID) {
+      const code = "MISSING_REPORT_ID";
+      const msg  = "reportID is required in the request body.";
       return NextResponse.json(
-        { error: "Missing reportID in request body." },
+        { errorCode: code, message: msg, errorUrl: buildErrorUrl(code, msg) },
         { status: 400 }
       );
     }
 
     if (!userID) {
+      const code = "MISSING_USER_ID";
+      const msg  = "userID is required in the request body.";
       return NextResponse.json(
-        { error: "Missing userID in request body." },
+        { errorCode: code, message: msg, errorUrl: buildErrorUrl(code, msg) },
         { status: 400 }
       );
     }
@@ -74,18 +96,24 @@ export async function POST(req: NextRequest) {
     const appId = process.env.APP_ID;
 
     if (!appId) {
+      const code = "MISSING_APP_ID_CONFIG";
+      const msg  = "Server misconfiguration: APP_ID environment variable is not set.";
       console.error("[Auth API] APP_ID is not defined in environment.");
       return NextResponse.json(
-        { error: "Server misconfiguration: APP_ID is missing." },
+        { errorCode: code, message: msg, errorUrl: buildErrorUrl(code, msg) },
         { status: 500 }
       );
     }
 
-    const redisKey = `${appId}-${userID}-${reportID}`;
+    //    Key:   APP_ID-token  (e.g. "BANKAPP-550e8400-...")
+    //    Value: JSON string  { userID, reportID }
+    //    TTL:   3600 seconds (1 hour)
+    const redisKey = `${appId}-${token}`;
+    const redisValue = JSON.stringify({ userID, reportID });
 
     try {
-      await redis.set(redisKey, token, "EX", 3600);
-      console.log(`[Auth API] Token stored → key: "${redisKey}"  TTL: 3600s`);
+      await redis.set(redisKey, redisValue, "EX", 3600);
+      console.log(`[Auth API] Token stored → key: "${redisKey}"  value: ${redisValue}  TTL: 3600s`);
     } catch (redisError: unknown) {
       const msg = redisError instanceof Error ? redisError.message : String(redisError);
       console.error("[Auth API] Redis write failed:", msg);
@@ -95,13 +123,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 6. Return token + IDs to the caller
+    // 6. Build the browser redirect URL
+    //    The backend will redirect the user's browser to this URL.
+    //    Format: /report?token=<GUID>&appId=<APP_ID>&userId=<userID>
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const redirectUrl = `${appUrl}/report?token=${token}&appId=${appId}&userId=${encodeURIComponent(userID)}`;
+
+    console.log(`[Auth API] redirectUrl built → ${redirectUrl}`);
+
+    // 7. Return token + IDs + redirect URL to the backend caller
     return NextResponse.json(
       {
         success: true,
         token,
         reportID,
         userID,
+        redirectUrl,   // ← backend uses this to open the browser
       },
       { status: 200 }
     );
