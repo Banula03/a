@@ -60,10 +60,10 @@ export async function POST(req: NextRequest) {
     //       Key format: APP_ID-token
     const redisKey = `${appId}-${token}`;
 
-    // ── 3. Look up the key in Redis ─────────────────────────────────
-    const raw = await redis.get(redisKey);
+    // ── 3. Look up the key in Redis (List format) ───────────────────
+    const list = await redis.lrange(redisKey, 0, -1);
 
-    if (!raw) {
+    if (!list || list.length === 0) {
       return NextResponse.json(
         {
           valid: false,
@@ -74,8 +74,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── 4. Parse the stored value  { userID, reportID } ───────────────
-    const stored: { userID: string; reportID: string } = JSON.parse(raw);
+    // ── 4. Extract values from the List [userID, reportID] ───────────
+    const [storedUserID, storedReportID] = list;
+    const stored = { userID: storedUserID, reportID: storedReportID };
 
     // ── 5. Compare userID ──────────────────────────────────────────────
     console.log(`[Verify API] Comparing  stored.userID: "${stored.userID}"  vs  received userId: "${userId}"`);

@@ -106,14 +106,18 @@ export async function POST(req: NextRequest) {
     }
 
     //    Key:   APP_ID-token  (e.g. "BANKAPP-550e8400-...")
-    //    Value: JSON string  { userID, reportID }
+    //    Value: List [userID, reportID]
     //    TTL:   3600 seconds (1 hour)
     const redisKey = `${appId}-${token}`;
-    const redisValue = JSON.stringify({ userID, reportID });
 
     try {
-      await redis.set(redisKey, redisValue, "EX", 3600);
-      console.log(`[Auth API] Token stored → key: "${redisKey}"  value: ${redisValue}  TTL: 3600s`);
+      // Using a pipeline (multi) to RPUSH the elements and set EXPIRE in one atomic transaction
+      await redis.multi()
+        .rpush(redisKey, userID, reportID)
+        .expire(redisKey, 3600)
+        .exec();
+
+      console.log(`[Auth API] Token stored as List → key: "${redisKey}"  values: ["${userID}", "${reportID}"]`);
     } catch (redisError: unknown) {
       const msg = redisError instanceof Error ? redisError.message : String(redisError);
       console.error("[Auth API] Redis write failed:", msg);
