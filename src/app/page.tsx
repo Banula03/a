@@ -5,11 +5,15 @@ export default function Home() {
       <p>Backend-only service. Single endpoint:</p>
       <hr />
       <pre>{`
-POST /api/auth
-  Auth:  Basic Auth (username:password base64 encoded)
-  Body:  { "reportID": "..." }
-  Returns: { success, token, reportID, message }
+
       `}</pre>
     </div>
   );
 }
+
+
+
+/*POST /api/auth
+  Auth:  Basic Auth (username:password base64 encoded)
+  Body:  { "reportID": "..." }
+  Returns: { success, token, reportID, message }*/

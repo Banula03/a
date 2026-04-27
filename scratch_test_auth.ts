@@ -1,9 +1,10 @@
 async function testAuthApi() {
   const url = 'http://localhost:3000/api/auth';
   const credentials = Buffer.from('admin:password123').toString('base64');
-  
+
   const payload = {
-    reportID: 'REP-001'
+    reportID: 'REP-001',
+    userID: 'USR-42'
   };
 
   console.log('--- Testing Auth API ---');
